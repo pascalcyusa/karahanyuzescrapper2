@@ -1,13 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import MainLayout from "@/layouts/MainLayout";
+import SearchBar from "@/components/SearchBar";
+import FeaturedMusic from "@/components/FeaturedMusic";
+import PlaylistSection from "@/components/PlaylistSection";
+import RecommendedSection from "@/components/RecommendedSection";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <MainLayout>
+      <div className="flex flex-col">
+        <SearchBar />
+        
+        <div className="px-6 pb-24">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-6">Main</h1>
+            <FeaturedMusic />
+          </div>
+          
+          <PlaylistSection title="Playlists for you" />
+          
+          <RecommendedSection title="You may also like" />
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 
