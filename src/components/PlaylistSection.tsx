@@ -49,7 +49,7 @@ const PlaylistSection = ({ title }: PlaylistSectionProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {playlists.map((playlist) => (
           <div key={playlist.id} className={`${playlist.color} rounded-xl overflow-hidden music-card`}>
-            <Link to="/" className="block relative h-full">
+            <Link to={`/playlists/${playlist.id}`} className="block relative h-full">
               <div className="aspect-square overflow-hidden">
                 <img
                   src={playlist.image}
