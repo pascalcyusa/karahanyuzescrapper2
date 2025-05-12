@@ -41,7 +41,7 @@ const PlaylistSection = ({ title }: PlaylistSectionProps) => {
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">{title}</h2>
-        <Link to="/" className="text-sm text-muted-foreground hover:text-white">
+        <Link to="/playlists" className="text-sm text-muted-foreground hover:text-white">
           View all
         </Link>
       </div>

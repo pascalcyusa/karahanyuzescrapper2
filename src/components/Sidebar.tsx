@@ -1,5 +1,5 @@
 
-import { Menu, Home, Radio, Mic2, Book, Music, Disc, Users, List, File } from "lucide-react";
+import { Menu, Home, Music, Disc, Users, List } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -11,17 +11,13 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const navItems = [
     { label: "Main", icon: Home, href: "/" },
-    { label: "Radio", icon: Radio, href: "/" },
-    { label: "Podcasts", icon: Mic2, href: "/" },
-    { label: "Books", icon: Book, href: "/" },
   ];
 
   const myMusicItems = [
     { label: "Tracks", icon: Music, href: "/" },
     { label: "Albums", icon: Disc, href: "/" },
     { label: "Artists", icon: Users, href: "/" },
-    { label: "Playlists", icon: List, href: "/" },
-    { label: "Files", icon: File, href: "/" },
+    { label: "Playlists", icon: List, href: "/playlists" },
   ];
 
   return (
