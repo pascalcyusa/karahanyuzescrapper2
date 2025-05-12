@@ -64,7 +64,7 @@ const NowPlaying = ({ isOpen, toggleNowPlaying }: NowPlayingProps) => {
   return (
     <aside
       className={cn(
-        "bg-secondary w-72 flex flex-col border-l border-muted transition-all duration-300",
+        "bg-secondary w-72 flex flex-col border-l border-muted transition-all duration-300 z-10",
         isOpen ? "translate-x-0" : "translate-x-full"
       )}
     >

@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   return (
     <aside
       className={cn(
-        "bg-secondary w-64 flex flex-col transition-all duration-300 shrink-0 border-r border-muted",
+        "bg-secondary w-64 flex flex-col transition-all duration-300 shrink-0 border-r border-muted z-10",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
