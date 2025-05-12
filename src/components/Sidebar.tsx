@@ -1,5 +1,5 @@
 
-import { Menu, Home, Radio, Mic2, Book, Music, Disc, Users, List, File, Settings, LogOut } from "lucide-react";
+import { Menu, Home, Radio, Mic2, Book, Music, Disc, Users, List, File } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -22,11 +22,6 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
     { label: "Artists", icon: Users, href: "/" },
     { label: "Playlists", icon: List, href: "/" },
     { label: "Files", icon: File, href: "/" },
-  ];
-
-  const settingsItems = [
-    { label: "Setting", icon: Settings, href: "/" },
-    { label: "Log out", icon: LogOut, href: "/" },
   ];
 
   return (
@@ -79,22 +74,6 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
           </ul>
         </div>
       </nav>
-      
-      <div className="mt-auto border-t border-muted">
-        <ul className="p-3 space-y-2">
-          {settingsItems.map((item) => (
-            <li key={item.label}>
-              <Link
-                to={item.href}
-                className="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-muted transition-colors"
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
     </aside>
   );
 };
