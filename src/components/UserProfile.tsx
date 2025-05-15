@@ -8,12 +8,21 @@ import {
 import { User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useAuthStatus } from "@/hooks/useAuthStatus"; // Added import
+import { useNavigate } from "react-router-dom"; // Added import
 
 interface UserProfileProps {
   className?: string;
 }
 
 const UserProfile = ({ className }: UserProfileProps) => {
+  const { signOutUser } = useAuthStatus(); // Added hook usage
+  const navigate = useNavigate(); // Added hook usage
+
+  const handleLogout = async () => {
+    await signOutUser();
+    navigate("/signin");
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={cn("focus:outline-none", className)}>
@@ -38,7 +47,7 @@ const UserProfile = ({ className }: UserProfileProps) => {
           <Settings size={16} className="mr-2" />
           <span>Settings</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
           <LogOut size={16} className="mr-2" />
           <span>Log out</span>
         </DropdownMenuItem>
