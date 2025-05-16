@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
@@ -180,7 +179,9 @@ const PlaylistDetails = () => {
             <div className="font-medium">#</div>
             <div className="font-medium">Title</div>
             <div className="font-medium hidden sm:block">Album</div>
-            <div className="font-medium hidden md:block">Artist</div>
+            <div className="font-medium hidden md:flex">
+              Artist
+            </div>
             <div className="font-medium text-right">
               <Clock3 size={16} />
             </div>
@@ -205,10 +206,10 @@ const PlaylistDetails = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center hidden sm:flex">
-                {track.album}
+              <div className="items-center hidden md:flex">
+                {track.artist}
               </div>
-              <div className="flex items-center hidden md:flex">
+              <div className="items-center hidden md:flex">
                 {track.artist}
               </div>
               <div className="flex items-center justify-end">

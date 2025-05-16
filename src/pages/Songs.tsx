@@ -1,16 +1,16 @@
 import MainLayout from "@/layouts/MainLayout";
 import { useState } from 'react';
-import { storage, db } from '@/lib/firebase'; // Assuming firebase.ts exports storage and db
+import { storage, db, auth } from '@/lib/firebase'; // Import auth
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useToast } from "@/components/ui/use-toast"; // For user feedback
+import { useToast } from "@/components/ui/use-toast";
 
 const SongsPage = () => {
     const { toast } = useToast();
     const [songFile, setSongFile] = useState<File | null>(null);
     const [songName, setSongName] = useState('');
     const [artistName, setArtistName] = useState('');
-    const [collectionName, setCollectionName] = useState('');
+    const [collectionName, setCollectionName] = useState(''); // For album/collection name
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -21,6 +21,19 @@ const SongsPage = () => {
     };
 
     const handleUpload = async () => {
+        // Get the current user
+        const currentUser = auth.currentUser;
+
+        if (!currentUser) {
+            toast({
+                title: "Authentication Error",
+                description: "You must be logged in to upload songs.",
+                variant: "destructive",
+            });
+            setIsUploading(false); // Ensure uploading state is reset
+            return;
+        }
+
         if (!songFile) {
             toast({
                 title: "Error",
@@ -49,8 +62,6 @@ const SongsPage = () => {
         setIsUploading(true);
         setUploadProgress(0);
 
-        // Create a storage reference
-        // Store the song in a folder whose name is under a given artist
         const storageRef = ref(storage, `songs/${artistName.trim()}/${songFile.name}`);
         const uploadTask = uploadBytesResumable(storageRef, songFile);
 
@@ -69,39 +80,44 @@ const SongsPage = () => {
                 setIsUploading(false);
             },
             async () => {
-                // Upload completed successfully, now get the download URL
                 try {
                     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
 
-                    // Save song metadata to Firestore
-                    await addDoc(collection(db, 'songs'), {
+                    // Prepare song data for Firestore
+                    const songData = {
                         name: songName.trim(),
                         artist: artistName.trim(),
-                        collection: collectionName.trim() || null, // Store as null if empty
+                        collection: collectionName.trim() || null, // Keep 'collection' if that's your DB field name
                         url: downloadURL,
                         fileName: songFile.name,
+                        uploaderUid: currentUser.uid, // Add the uploader's ID
                         createdAt: serverTimestamp(),
-                        // You might want to add userId if users are uploading songs
-                    });
+                        // Add any other relevant fields like duration, genre, etc.
+                    };
+
+                    console.log("Attempting to save songData to Firestore:", songData); // Log data before sending
+
+                    await addDoc(collection(db, 'songs'), songData);
 
                     toast({
                         title: "Upload Successful",
-                        description: `"${songName.trim()}" has been uploaded.`,
+                        description: `"${songData.name}" has been uploaded.`,
                     });
-                    // Reset form
+
+                    // Reset form state
                     setSongFile(null);
                     setSongName('');
                     setArtistName('');
                     setCollectionName('');
-                    // Clear the file input visually
                     const fileInput = document.getElementById('songFile') as HTMLInputElement;
                     if (fileInput) fileInput.value = '';
 
                 } catch (error: any) {
                     console.error("Error saving song metadata: ", error);
+                    console.error("Error details:", error.code, error.message); // Log more error details
                     toast({
-                        title: "Error",
-                        description: "Failed to save song details after upload. " + error.message,
+                        title: "Error Saving Metadata",
+                        description: `Failed to save song details: ${error.message || 'Unknown Firestore error.'}`,
                         variant: "destructive",
                     });
                 } finally {
@@ -124,7 +140,7 @@ const SongsPage = () => {
                             <input
                                 type="file"
                                 id="songFile"
-                                accept="audio/*"
+                                accept="audio/*,.mp3,.wav,.m4a,.flac" // Be more specific with audio types
                                 onChange={handleFileChange}
                                 disabled={isUploading}
                                 className="w-full border border-input bg-background px-3 py-2 text-sm rounded-md file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -139,6 +155,7 @@ const SongsPage = () => {
                                 value={songName}
                                 onChange={(e) => setSongName(e.target.value)}
                                 disabled={isUploading}
+                                required // Make fields required at HTML level too
                                 className="w-full border border-input bg-background px-3 py-2 text-sm rounded-md placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             />
                         </div>
@@ -151,6 +168,7 @@ const SongsPage = () => {
                                 value={artistName}
                                 onChange={(e) => setArtistName(e.target.value)}
                                 disabled={isUploading}
+                                required
                                 className="w-full border border-input bg-background px-3 py-2 text-sm rounded-md placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             />
                         </div>
@@ -168,7 +186,7 @@ const SongsPage = () => {
                         </div>
                         <button
                             type="submit"
-                            disabled={isUploading}
+                            disabled={isUploading || !songFile || !songName.trim() || !artistName.trim()} // More robust disable condition
                             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                         >
                             {isUploading ? `Uploading... ${uploadProgress.toFixed(0)}%` : 'Upload Song'}
@@ -181,11 +199,10 @@ const SongsPage = () => {
                     </form>
                 </div>
 
-                {/* Placeholder for displaying uploaded songs or status messages */}
                 <div className="mt-8">
                     <h2 className="text-xl font-semibold mb-2">Uploaded Songs</h2>
                     <p className="text-muted-foreground">Songs you upload will appear here.</p>
-                    {/* Later, this area will list songs from Firebase */}
+                    {/* TODO: Fetch and display songs from Firestore here */}
                 </div>
             </div>
         </MainLayout>
