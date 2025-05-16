@@ -1,42 +1,110 @@
 
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { collection, getDocs, getFirestore, limit, query } from "firebase/firestore";
+import { getStorage, ref, getDownloadURL } from "firebase/storage"; // Added Storage imports
+import { app } from "@/lib/firebase";
 
-const playlists = [
-  {
-    id: 1,
-    title: "Dejavu",
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&auto=format&q=80",
-    tracks: 30,
-    color: "bg-amber-500",
-  },
-  {
-    id: 2,
-    title: "Playlist of the day",
-    image: "https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?w=300&h=300&fit=crop&auto=format&q=80",
-    tracks: 28,
-    color: "bg-blue-700",
-  },
-  {
-    id: 3,
-    title: "Something new",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop&auto=format&q=80",
-    tracks: 37,
-    color: "bg-purple-400",
-  },
-  {
-    id: 4,
-    title: "Exclusive show",
-    image: "https://images.unsplash.com/photo-1534126511673-b6899657816a?w=300&h=300&fit=crop&auto=format&q=80",
-    tracks: 17,
-    color: "bg-kplayer-green",
-  },
-];
+interface Playlist {
+  id: string;
+  title: string;
+  image: string;
+  tracksCount: number;
+  color?: string;
+}
+
+// Helper function to get download URL from Firebase Storage path (can be moved to a utils file)
+const getFirebaseStorageUrl = async (imagePath: string): Promise<string> => {
+  if (!imagePath) return 'https://via.placeholder.com/300'; // Fallback for empty path
+  if (imagePath.startsWith('gs://') || imagePath.startsWith('https://firebasestorage.googleapis.com')) {
+    try {
+      const storage = getStorage(app);
+      const pathReference = ref(storage, imagePath);
+      return await getDownloadURL(pathReference);
+    } catch (error) {
+      console.warn(`Failed to get download URL for ${imagePath}, returning original path:`, error);
+      return imagePath;
+    }
+  } else if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+    try {
+      const storage = getStorage(app);
+      const pathReference = ref(storage, imagePath);
+      return await getDownloadURL(pathReference);
+    } catch (error) {
+      console.warn(`Failed to get download URL for ${imagePath}, returning original path:`, error);
+      return imagePath;
+    }
+  }
+  return imagePath;
+};
 
 interface PlaylistSectionProps {
   title: string;
 }
 
 const PlaylistSection = ({ title }: PlaylistSectionProps) => {
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const db = getFirestore(app);
+        const playlistsCollection = collection(db, "playlists");
+        const q = query(playlistsCollection, limit(4));
+        const playlistSnapshot = await getDocs(q);
+        const playlistsDataPromises = playlistSnapshot.docs.map(async (doc) => {
+          const data = doc.data() as Omit<Playlist, 'id' | 'image'> & { image: string };
+          const imageUrl = await getFirebaseStorageUrl(data.image);
+          return {
+            id: doc.id,
+            ...data,
+            image: imageUrl,
+          };
+        });
+        const resolvedPlaylistsData = await Promise.all(playlistsDataPromises);
+        setPlaylists(resolvedPlaylistsData as Playlist[]);
+      } catch (err) {
+        console.error("Error fetching playlists for section: ", err);
+        setError("Failed to load playlists.");
+      }
+      setLoading(false);
+    };
+
+    fetchPlaylists();
+  }, []);
+
+  if (loading) {
+    // Optional: Add a more sophisticated loading state, e.g., skeleton loaders
+    return (
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">{title}</h2>
+        <p>Loading playlists...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">{title}</h2>
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
+
+  if (playlists.length === 0 && !loading) {
+    return (
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">{title}</h2>
+        <p>No playlists to display in this section.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
@@ -45,21 +113,21 @@ const PlaylistSection = ({ title }: PlaylistSectionProps) => {
           View all
         </Link>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {playlists.map((playlist) => (
-          <div key={playlist.id} className={`${playlist.color} rounded-xl overflow-hidden music-card`}>
+          <div key={playlist.id} className={`${playlist.color || 'bg-gray-700'} rounded-xl overflow-hidden music-card`}>
             <Link to={`/playlists/${playlist.id}`} className="block relative h-full">
               <div className="aspect-square overflow-hidden">
                 <img
-                  src={playlist.image}
+                  src={playlist.image || 'https://via.placeholder.com/300'}
                   alt={playlist.title}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="p-4">
                 <h3 className="font-medium text-lg">{playlist.title}</h3>
-                <p className="text-sm text-white/70">{playlist.tracks} tracks</p>
+                <p className="text-sm text-white/70">{playlist.tracksCount} tracks</p>
               </div>
             </Link>
           </div>

@@ -4,75 +4,110 @@ import { useParams } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Play, MoreHorizontal, Heart, Clock3, Music } from "lucide-react";
+import { doc, getDoc, getFirestore, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { app } from "@/lib/firebase";
 
 interface Track {
-  id: number;
+  id: string; // Firestore document ID
   title: string;
   artist: string;
   album: string;
   duration: string;
   liked: boolean;
+  order?: number; // Optional: if you want to order tracks
 }
 
 interface PlaylistData {
-  id: number;
+  id: string; // Firestore document ID
   title: string;
   description: string;
-  coverImage: string;
-  trackCount: number;
-  duration: string;
-  color: string;
+  coverImage: string; // URL, potentially from Firebase Storage
+  trackCount?: number; // This can be derived from tracks.length
+  duration?: string; // This might be calculated or stored
+  color?: string; // UI specific, might not be in Firestore
   tracks: Track[];
 }
 
+// Helper function to get download URL from Firebase Storage path (can be moved to a utils file)
+const getFirebaseStorageUrl = async (imagePath: string): Promise<string> => {
+  if (!imagePath) return 'https://via.placeholder.com/300'; // Fallback for empty path
+  if (imagePath.startsWith('gs://') || imagePath.startsWith('https://firebasestorage.googleapis.com')) {
+    try {
+      const storage = getStorage(app);
+      const pathReference = ref(storage, imagePath);
+      return await getDownloadURL(pathReference);
+    } catch (error) {
+      console.warn(`Failed to get download URL for ${imagePath}, returning original path:`, error);
+      return imagePath;
+    }
+  } else if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+    try {
+      const storage = getStorage(app);
+      const pathReference = ref(storage, imagePath);
+      return await getDownloadURL(pathReference);
+    } catch (error) {
+      console.warn(`Failed to get download URL for ${imagePath}, returning original path:`, error);
+      return imagePath;
+    }
+  }
+  return imagePath;
+};
+
 const PlaylistDetails = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call to fetch playlist data
-    const fetchPlaylist = async () => {
+    if (!id) {
+      setError("Playlist ID is missing.");
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchPlaylistDetails = async () => {
       setIsLoading(true);
-      
-      // Simulate network request
-      setTimeout(() => {
-        const mockPlaylist: PlaylistData = {
-          id: Number(id),
-          title: id === "1" ? "Dejavu" : id === "2" ? "Playlist of the day" : id === "3" ? "Something new" : "Exclusive show",
-          description: "A curated playlist with your favorite tracks for every mood",
-          coverImage: id === "1" 
-            ? "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&auto=format&q=80"
-            : id === "2" 
-              ? "https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?w=300&h=300&fit=crop&auto=format&q=80" 
-              : id === "3"
-                ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop&auto=format&q=80"
-                : "https://images.unsplash.com/photo-1534126511673-b6899657816a?w=300&h=300&fit=crop&auto=format&q=80",
-          trackCount: 30,
-          duration: "1 hr 45 min",
-          color: id === "1" 
-            ? "bg-amber-500" 
-            : id === "2" 
-              ? "bg-blue-700" 
-              : id === "3" 
-                ? "bg-purple-400" 
-                : "bg-kplayer-green",
-          tracks: Array(12).fill(null).map((_, index) => ({
-            id: index + 1,
-            title: `Track ${index + 1}`,
-            artist: `Artist ${Math.floor(index / 3) + 1}`,
-            album: `Album ${Math.floor(index / 4) + 1}`,
-            duration: `${Math.floor(Math.random() * 2) + 2}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
-            liked: Math.random() > 0.7,
-          })),
-        };
-        
-        setPlaylist(mockPlaylist);
-        setIsLoading(false);
-      }, 1000);
+      setError(null);
+      try {
+        const db = getFirestore(app);
+        const playlistDocRef = doc(db, "playlists", id);
+        const playlistSnap = await getDoc(playlistDocRef);
+
+        if (playlistSnap.exists()) {
+          const playlistDataFromFirestore = playlistSnap.data() as Omit<PlaylistData, 'id' | 'tracks' | 'coverImage'> & { coverImage: string };
+          const coverImageUrl = await getFirebaseStorageUrl(playlistDataFromFirestore.coverImage);
+
+          const playlistBaseData = {
+            id: playlistSnap.id,
+            ...playlistDataFromFirestore,
+            coverImage: coverImageUrl,
+          };
+
+          // Fetch tracks from a subcollection named 'tracks' within the playlist document
+          const tracksCollectionRef = collection(db, "playlists", id, "tracks");
+          // Optionally order tracks if you have an 'order' field or similar
+          const tracksQuery = query(tracksCollectionRef, orderBy("order", "asc")); // Or orderBy("title") etc.
+          const tracksSnapshot = await getDocs(tracksQuery);
+
+          const tracksData = tracksSnapshot.docs.map(trackDoc => ({
+            id: trackDoc.id,
+            ...(trackDoc.data() as Omit<Track, 'id'>),
+          }));
+
+          setPlaylist({ ...playlistBaseData, tracks: tracksData } as PlaylistData);
+        } else {
+          setError("Playlist not found.");
+        }
+      } catch (err) {
+        console.error("Error fetching playlist details: ", err);
+        setError("Failed to load playlist details. Please try again later.");
+      }
+      setIsLoading(false);
     };
 
-    fetchPlaylist();
+    fetchPlaylistDetails();
   }, [id]);
 
   if (isLoading) {
@@ -96,8 +131,9 @@ const PlaylistDetails = () => {
     return (
       <MainLayout>
         <div className="flex flex-col items-center justify-center h-full">
-          <h2 className="text-2xl font-semibold mb-2">Playlist not found</h2>
-          <p className="text-muted-foreground">The playlist you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-2xl font-semibold mb-2">{error || "Playlist not found"}</h2>
+          {!error && <p className="text-muted-foreground">The playlist you're looking for doesn't exist or has been removed.</p>}
+          {error && <p className="text-muted-foreground">Please try again later or contact support.</p>}
         </div>
       </MainLayout>
     );
@@ -107,11 +143,11 @@ const PlaylistDetails = () => {
     <MainLayout>
       <div className="px-6 pb-24">
         {/* Header */}
-        <div className={`flex flex-col md:flex-row items-center md:items-end gap-6 ${playlist.color} p-6 rounded-b-lg`}>
+        <div className={`flex flex-col md:flex-row items-center md:items-end gap-6 ${playlist.color || 'bg-gray-700'} p-6 rounded-b-lg`}>
           <div className="w-48 h-48 flex-shrink-0 shadow-lg rounded-md overflow-hidden">
-            <img 
-              src={playlist.coverImage} 
-              alt={playlist.title} 
+            <img
+              src={playlist.coverImage || 'https://via.placeholder.com/300'}
+              alt={playlist.title}
               className="w-full h-full object-cover"
             />
           </div>
@@ -119,7 +155,8 @@ const PlaylistDetails = () => {
             <h1 className="text-4xl font-bold mb-2">{playlist.title}</h1>
             <p className="text-white/80 mb-3">{playlist.description}</p>
             <div className="text-sm text-white/70">
-              {playlist.trackCount} songs • {playlist.duration} 
+              {playlist.tracks.length} songs
+              {playlist.duration && ` • ${playlist.duration}`}
             </div>
           </div>
         </div>
@@ -149,13 +186,13 @@ const PlaylistDetails = () => {
             </div>
           </div>
 
-          {playlist.tracks.map((track) => (
-            <div 
+          {playlist.tracks.map((track, index) => (
+            <div
               key={track.id}
               className="grid grid-cols-[16px_4fr_3fr_2fr_1fr] md:grid-cols-[16px_6fr_4fr_3fr_1fr] gap-4 px-4 py-3 text-sm hover:bg-secondary/50 rounded-md"
             >
               <div className="flex items-center text-muted-foreground">
-                {track.id}
+                {index + 1} {/* Displaying sequential number based on array index */}
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-muted flex items-center justify-center rounded-md">

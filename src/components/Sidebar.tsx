@@ -14,7 +14,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   ];
 
   const myMusicItems = [
-    { label: "Tracks", icon: Music, href: "/" },
+    { label: "Songs", icon: Music, href: "/songs" },
     { label: "Albums", icon: Disc, href: "/" },
     { label: "Artists", icon: Users, href: "/" },
     { label: "Playlists", icon: List, href: "/playlists" },
@@ -33,7 +33,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
         </button>
         <span className="font-bold text-xl">KPlayer</span>
       </div>
-      
+
       <nav className="flex-1 overflow-y-auto scrollbar-hidden">
         <div className="mb-6">
           <ul className="space-y-2 px-3">
@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             ))}
           </ul>
         </div>
-        
+
         <div className="mb-6">
           <div className="px-7 mb-2 text-sm font-medium text-muted-foreground">
             My music

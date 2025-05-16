@@ -10,6 +10,7 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Playlists from "./pages/Playlists";
 import PlaylistDetails from "./pages/PlaylistDetails";
+import SongsPage from "./pages/Songs"; // Added import for SongsPage
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute"; // Added import
 
@@ -49,6 +50,7 @@ const App = () => {
             <Route element={<ProtectedRoute />}>
               <Route path="/playlists" element={<Playlists />} />
               <Route path="/playlists/:id" element={<PlaylistDetails />} />
+              <Route path="/songs" element={<SongsPage />} /> {/* Added route for SongsPage */}
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
